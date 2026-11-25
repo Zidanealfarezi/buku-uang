@@ -7,7 +7,7 @@ Pencatat uang pribadi berbentuk web app, dioptimalkan untuk iPhone, di-hosting d
 - Akun "titip" (uang di orang lain) dipisah dari uang siap pakai
 - Strip tanggal per minggu, statistik pengeluaran 7 hari, rincian per kategori
 - Daftar hutang/cicilan dengan tombol Bayar (otomatis tercatat sebagai pengeluaran)
-- Foto struk → terisi otomatis (opsional, butuh `ANTHROPIC_API_KEY`)
+- Lampirkan foto struk/nota ke transaksi (disimpan di Blob); pembacaan otomatis opsional dengan `ANTHROPIC_API_KEY`
 - Akun sendiri (daftar & masuk dengan username + password); data tiap akun terpisah dan tersinkron di semua perangkat
 - Mode terang dan gelap mengikuti perangkat
 
@@ -15,7 +15,8 @@ Pencatat uang pribadi berbentuk web app, dioptimalkan untuk iPhone, di-hosting d
 - `index.html` — seluruh tampilan
 - `api/data.js` — baca/tulis data (GET, POST ops)
 - `api/auth.js` — daftar & masuk (password di-hash scrypt, sesi token HMAC 60 hari)
-- `api/scan.js` — baca foto struk lewat Claude API
+- `api/scan.js` — baca foto struk lewat Claude API (opsional)
+- `api/media.js` — simpan & tampilkan foto lampiran (private, per akun)
 - Database: **Vercel Blob (private)** — `bukuuang/users/<username>.json` dan `bukuuang/data/<username>.json`
 
 ## Environment variables (Vercel)

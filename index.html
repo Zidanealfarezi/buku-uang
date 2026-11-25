@@ -137,6 +137,10 @@ nav .add svg{width:26px;height:26px}
 .sheet h2{margin:0 0 10px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:var(--card);border-radius:14px;padding:10px 14px;display:none;gap:14px;align-items:center;font-size:14px;z-index:10;max-width:92vw}
 .toast.show{display:flex}.toast button{background:none;border:0;color:var(--lime);font-weight:700;min-height:36px;cursor:pointer}
+.x.ph{color:var(--green)}.x.ph svg{width:18px;height:18px}
+.prev{position:relative}.prev .x{position:absolute;top:4px;right:4px}
+.viewer{position:fixed;inset:0;background:#000e;z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;color:#fff}
+.viewer.show{display:flex}.viewer img{max-width:100%;max-height:80vh;border-radius:12px}.viewer small{opacity:.6}
 .lock{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;padding:0 0 32px}
 .lhead{background:var(--lime);color:#17210b;padding:calc(28px + env(safe-area-inset-top)) 24px 72px;border-radius:0 0 32px 32px;position:relative;overflow:hidden}
 .lhead .av{background:#17210b;color:var(--lime)}
@@ -227,7 +231,7 @@ nav .add svg{width:26px;height:26px}
     <div class="scanrow" id="scanRow" hidden>
       <label class="scan" id="scanL"><input type="file" id="scanF" accept="image/*" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto struk</label>
-      <span id="scanMsg">Struk, nota, atau bukti transfer</span>
+      <span id="scanMsg">Lampirkan foto struk, nota, atau bukti</span>
     </div>
     <div class="prev" id="scanPrev" hidden></div>
     <div class="seg" id="seg">
@@ -273,6 +277,7 @@ nav .add svg{width:26px;height:26px}
     <p class="lfoot" id="lswitch">Belum punya akun? <button type="button" data-m="signup">Daftar</button></p>
   </form>
 </div>
+<div class="viewer" id="viewer" role="dialog" aria-label="Foto lampiran"><img id="viewImg" alt="Foto lampiran"><p id="viewMsg"></p><small>Ketuk di mana saja untuk menutup</small></div>
 <div class="toast" id="toast"><span id="toastT"></span><button id="toastB">Batalkan</button></div>
 
 <script>
@@ -328,7 +333,7 @@ function txRow(id,t){
   const where=t.jenis==='mv'?nm(t.dari)+' → '+nm(t.ke):t.jenis==='in'?'ke '+nm(t.ke):'dari '+nm(t.dari);
   const title=t.jenis==='mv'?'Pindah saldo':(t.kat||'Lainnya');
   const ic=t.jenis==='mv'?'⇄':IC[t.jenis];
-  return `<div class="it"><div class="ic ${cls}">${ic}</div><div class="t"><div>${esc(title)}</div><small>${esc(t.ket?t.ket+' · ':'')}${esc(where)}</small></div><span class="n ${cls}">${sign}${rp(t.jml)}</span><button class="x" data-del="${esc(id)}" aria-label="Hapus">×</button></div>`}
+  return `<div class="it"><div class="ic ${cls}">${ic}</div><div class="t"><div>${esc(title)}</div><small>${esc(t.ket?t.ket+' · ':'')}${esc(where)}</small></div><span class="n ${cls}">${sign}${rp(t.jml)}</span>${t.foto?`<button class="x ph" data-foto="${esc(t.foto)}" aria-label="Lihat foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="3"/><circle cx="9" cy="11" r="2"/><path d="m21 16-5-5-9 9"/></svg></button>`:''}<button class="x" data-del="${esc(id)}" aria-label="Hapus">×</button></div>`}
 function renderHome(){
   const b=balances();let tot=0,tit=0;for(const[id,a]of akunSorted())(a.jenis==='titip'?(tit+=b[id]):(tot+=b[id]));
   $('total').textContent=rp(tot);$('titip').textContent=tit?'+ '+rp(tit)+' dititip di orang lain':'';
@@ -418,13 +423,13 @@ $('quick').addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(
 $('cats').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;cat=b.dataset.c;for(const x of $('cats').children)x.classList.toggle('on',x===b)});
 $('from').addEventListener('change',check);$('to').addEventListener('change',check);
 $('form').addEventListener('submit',e=>{e.preventDefault();if($('save').disabled)return;
-  const t={jenis:type,jml:amount,tgl:$('tgl').value||today(),ket:$('note').value.trim().slice(0,80),ts:Date.now()};
+  const t={jenis:type,jml:amount,tgl:$('tgl').value||today(),ket:$('note').value.trim().slice(0,80),ts:Date.now()};if(pendingFoto)t.foto=pendingFoto;
   if(type==='out'){t.dari=$('from').value;t.kat=cat}else if(type==='in'){t.ke=$('from').value;t.kat=cat}else{t.dari=$('from').value;t.ke=$('to').value}
-  sel=t.tgl;put('tx',uid(),t);setAmt(0);$('note').value='';$('scanPrev').hidden=true;$('scanMsg').textContent='Struk, nota, atau bukti transfer';
+  sel=t.tgl;put('tx',uid(),t);setAmt(0);$('note').value='';clearFoto();
   closeAdd();go('home');toast('Tersimpan',null)});
 
 /* ---------- lists ---------- */
-function onDel(e){const d=e.target.closest('[data-del]');if(d){const id=d.dataset.del,old=S.tx[id];del('tx',id);toast('Catatan dihapus',()=>put('tx',id,old));return}
+function onDel(e){const ph=e.target.closest('[data-foto]');if(ph){openFoto(ph.dataset.foto);return}const d=e.target.closest('[data-del]');if(d){const id=d.dataset.del,old=S.tx[id];del('tx',id);toast('Catatan dihapus',()=>put('tx',id,old));return}
   if(e.target.id==='moreB'){showN+=30;renderStat()}}
 $('dayList').addEventListener('click',onDel);$('riw').addEventListener('click',onDel);
 $('v-hut').addEventListener('click',e=>{const b=e.target.closest('[data-pay]');if(!b)return;const id=b.dataset.pay,d=S.hutang[id];
@@ -453,10 +458,21 @@ let sampler=false,thumb=null;
 function shrink(f){return new Promise((ok,no)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.82))};im.onerror=()=>no({code:"image_rejected"});im.src=URL.createObjectURL(f)})}
 function pickCat(c){if(!CATS[type].includes(c))return;cat=c;for(const x of $('cats').children)x.classList.toggle('on',x.dataset.c===c)}
 const ERR={not_granted:'Izin ke Claude belum diberikan',sampling_disabled:'Fitur ini tidak tersedia di akunmu',rate_limited:'Terlalu sering, coba lagi sebentar lagi',image_rejected:'Foto tidak bisa dibaca, coba foto lain',invalid_json:'Struk kurang jelas, coba foto ulang',refused:'Foto ini tidak bisa diproses',session_expired:'Silakan login ulang ke Claude'};
+let pendingFoto=null;
+const DEFMSG=()=>sampler?'Foto struk, isian terisi otomatis':'Lampirkan foto struk, nota, atau bukti';
+function clearFoto(){pendingFoto=null;$('scanPrev').hidden=true;$('scanPrev').innerHTML='';$('scanMsg').textContent=DEFMSG()}
+function showPrev(title,items){$('scanPrev').innerHTML=`<img src="${thumb}" alt="Foto lampiran"><ul><b>${esc(title)}</b>${(items||[]).map(i=>`<li><span>${esc(i&&i.nama)}</span><span>${rp(i&&i.harga)}</span></li>`).join('')}</ul><button type="button" class="x" id="fotoX" aria-label="Hapus foto">×</button>`;$('scanPrev').hidden=false}
+$('scanPrev').addEventListener('click',e=>{if(e.target.id==='fotoX')clearFoto()});
 $('scanF').addEventListener('change',async e=>{
-  const f=e.target.files&&e.target.files[0];e.target.value='';if(!f||!sampler)return;
-  const L=$('scanL');L.setAttribute('aria-busy','true');$('scanMsg').textContent='Membaca struk… (10–30 detik)';
+  const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+  const L=$('scanL');L.setAttribute('aria-busy','true');$('save').disabled=true;
   if(thumb)URL.revokeObjectURL(thumb);thumb=URL.createObjectURL(f);
+  let image;
+  try{image=await shrink(f)}catch(err){$('scanMsg').textContent='Foto tidak bisa dibuka, coba foto lain';L.removeAttribute('aria-busy');check();return}
+  showPrev('Mengunggah foto…',[]);$('scanMsg').textContent='Mengunggah…';
+  try{const r=await api('/api/media',{method:'POST',body:JSON.stringify({image})});pendingFoto=r.id;showPrev('Foto terlampir',[]);$('scanMsg').textContent=sampler?'Membaca struk… (10–30 detik)':'Foto terlampir. Isi jumlahnya, lalu Simpan.'}
+  catch(err){$('scanMsg').textContent=err.code===413?'Foto terlalu besar':'Gagal mengunggah foto, cek internet';$('scanPrev').hidden=true;L.removeAttribute('aria-busy');check();return}
+  if(!sampler){L.removeAttribute('aria-busy');check();return}
   const akun=akunSorted().map(([id,a])=>id+' = '+a.nama).join('; ');
   const prompt=`Foto ini adalah struk belanja, nota, tagihan, atau bukti transfer/pembayaran (biasanya dari Indonesia, mata uang Rupiah).
 Baca fotonya dan balas HANYA dengan satu objek JSON seperti ini:
@@ -471,21 +487,25 @@ Aturan:
 - catatan: maksimal 60 karakter, nama toko/penerima dan ringkasan isi.
 - Kalau foto bukan struk atau total tidak terbaca, balas {"total":0}.`;
   try{
-    const image=await shrink(f);const r=await api('/api/scan',{method:'POST',body:JSON.stringify({image,prompt})}).catch(e=>{throw{code:e.code===422?'invalid_json':e.code===501?'images_unavailable':e.code}});
+    const r=await api('/api/scan',{method:'POST',body:JSON.stringify({image,prompt})}).catch(e=>{throw{code:e.code===422?'invalid_json':e.code}});
     const total=Math.round(Number(r&&r.total)||0);
-    if(!total){$('scanMsg').textContent='Total tidak terbaca. Coba foto lebih dekat dan terang.';return}
+    if(!total){$('scanMsg').textContent='Foto terlampir, tapi total tidak terbaca. Isi jumlahnya manual.';return}
     setType(r.jenis==='in'?'in':'out');setAmt(total);if(typeof r.kategori==='string')pickCat(r.kategori);
     if(typeof r.tanggal==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(r.tanggal))$('tgl').value=r.tanggal;
     if(typeof r.akun==='string'&&S.akun[r.akun])$('from').value=r.akun;
-    $('note').value=String(r.catatan||r.toko||'').slice(0,80);check();
-    const items=Array.isArray(r.items)?r.items.slice(0,8):[];
-    $('scanPrev').innerHTML=`<img src="${thumb}" alt="Foto struk"><ul><b>${esc(r.toko||'Hasil baca')} · ${rp(total)}</b>${items.map(i=>`<li><span>${esc(i&&i.nama)}</span><span>${rp(i&&i.harga)}</span></li>`).join('')}</ul>`;
-    $('scanPrev').hidden=false;$('scanMsg').textContent='Sudah terisi. Cek lagi, lalu Simpan.';
-  }catch(err){const c=err&&err.code;$('scanMsg').textContent=ERR[c]||'Gagal membaca, coba lagi.';
-    if(['not_granted','sampling_disabled','images_unavailable','not_declared'].includes(c))$('scanRow').hidden=true}
-  finally{L.removeAttribute('aria-busy')}
+    $('note').value=String(r.catatan||r.toko||'').slice(0,80);
+    showPrev((r.toko||'Hasil baca')+' · '+rp(total),Array.isArray(r.items)?r.items.slice(0,8):[]);
+    $('scanMsg').textContent='Sudah terisi. Cek lagi, lalu Simpan.';
+  }catch(err){$('scanMsg').textContent='Foto terlampir. Gagal membaca otomatis, isi jumlahnya manual.'}
+  finally{L.removeAttribute('aria-busy');check()}
 });
-async function scanCheck(){try{const r=await api('/api/scan');sampler=!!r.enabled;$('scanRow').hidden=!sampler}catch(e){}}
+async function scanCheck(){$('scanRow').hidden=false;try{const r=await api('/api/scan');sampler=!!r.enabled}catch(e){}if(!pendingFoto)$('scanMsg').textContent=DEFMSG()}
+/* foto viewer */
+const fotoCache={};
+async function openFoto(id){$('viewer').classList.add('show');$('viewImg').removeAttribute('src');$('viewMsg').textContent='Memuat foto…';
+  try{if(!fotoCache[id]){const r=await fetch('/api/media?id='+encodeURIComponent(id),{headers:{authorization:'Bearer '+TOKEN}});if(!r.ok)throw 0;fotoCache[id]=URL.createObjectURL(await r.blob())}
+    $('viewImg').src=fotoCache[id];$('viewMsg').textContent=''}catch(e){$('viewMsg').textContent='Foto tidak bisa dimuat'}}
+$('viewer').addEventListener('click',()=>$('viewer').classList.remove('show'));
 
 /* ---------- start ---------- */
 {const h=new Date().getHours();$('greet').textContent=h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam'}
