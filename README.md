@@ -7,7 +7,8 @@ Pencatat uang pribadi berbentuk web app, dioptimalkan untuk iPhone, di-hosting d
 - Akun "titip" (uang di orang lain) dipisah dari uang siap pakai
 - Strip tanggal per minggu, statistik pengeluaran 7 hari, rincian per kategori
 - Daftar hutang/cicilan dengan tombol Bayar (otomatis tercatat sebagai pengeluaran)
-- Lampirkan foto struk/nota ke transaksi (disimpan di Blob); pembacaan otomatis opsional dengan `ANTHROPIC_API_KEY`
+- Lampirkan foto struk/nota ke transaksi (disimpan di Blob)
+- Jumlah, tanggal, toko & kategori terbaca otomatis secara gratis di HP (Tesseract.js); `ANTHROPIC_API_KEY` opsional untuk hasil lebih akurat
 - Akun sendiri (daftar & masuk dengan username + password); data tiap akun terpisah dan tersinkron di semua perangkat
 - Mode terang dan gelap mengikuti perangkat
 
