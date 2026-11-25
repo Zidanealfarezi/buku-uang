@@ -137,6 +137,10 @@ nav .add svg{width:26px;height:26px}
 .sheet h2{margin:0 0 10px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:var(--card);border-radius:14px;padding:10px 14px;display:none;gap:14px;align-items:center;font-size:14px;z-index:10;max-width:92vw}
 .toast.show{display:flex}.toast button{background:none;border:0;color:var(--lime);font-weight:700;min-height:36px;cursor:pointer}
+.lock{position:fixed;inset:0;background:var(--bg);z-index:20;display:grid;place-items:center;padding:24px}
+.lockbox{width:min(360px,100%);text-align:center}.lockbox h2{margin:0 0 14px;font-size:22px}
+.lockbox input{width:100%;min-height:56px;border:0;border-radius:18px;background:var(--card);color:var(--ink);font:800 26px "Plus Jakarta Sans",sans-serif;text-align:center;letter-spacing:.3em}
+.lockbox .sub{color:var(--mute);font-size:13px;min-height:1.2em;margin:10px 0 0}
 @media(prefers-reduced-motion:no-preference){.sheet{animation:up .25s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
 </style>
 </head>
@@ -190,6 +194,7 @@ nav .add svg{width:26px;height:26px}
     <div class="card"><b>Akun dan saldo awal</b><p class="sub" style="margin:4px 0 0;font-size:13px">Saldo awal = saldo saat mulai mencatat. Ketuk tombol kanan untuk ubah jenis: akun "titip" tidak dihitung sebagai uang siap pakai.</p>
       <div id="akunList"></div>
       <button type="button" class="pill more" id="addAk">+ Tambah akun</button>
+      <button type="button" class="pill more" id="logout">Kunci / keluar dari HP ini</button>
     </div>
   </section>
 </div>
@@ -237,6 +242,10 @@ nav .add svg{width:26px;height:26px}
   <button class="save" id="payOk">Tandai lunas</button>
   <button class="pill more" id="payNo" type="button">Batal</button>
 </div></div>
+<div class="lock" id="lock" hidden><form id="lockF" class="lockbox" autocomplete="off">
+  <div class="av" style="margin:0 auto 10px">Rp</div><h2 id="lockT">Masukkan PIN</h2>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••" aria-label="PIN">
+  <p id="lockMsg" class="sub"></p><button class="save" id="lockGo">Buka</button></form></div>
 <div class="toast" id="toast"><span id="toastT"></span><button id="toastB">Batalkan</button></div>
 
 <script>
@@ -260,13 +269,19 @@ const IC={out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 
 let S={akun:{},tx:{},hutang:{}},db=null,mode='local',type='out',cat='Makan',view='home',showN=30,payId=null,undo=null,amount=0,sel=today();
 
-/* ---------- storage ---------- */
-function loadLocal(){try{const v=JSON.parse(localStorage.getItem(LK));if(v&&v.akun)return v}catch(e){}return JSON.parse(JSON.stringify(SEED))}
+/* ---------- storage (Vercel API) ---------- */
+let PIN='';try{PIN=localStorage.getItem('bukuUang.pin')||''}catch(e){}
+function loadLocal(){try{const v=JSON.parse(localStorage.getItem(LK));if(v&&v.akun)return v}catch(e){}return{akun:{},tx:{},hutang:{}}}
 function saveLocal(){try{localStorage.setItem(LK,JSON.stringify(S))}catch(e){}}
-async function put(col,id,obj){S[col][id]=obj;render();
-  if(mode==='db'){setSync('Menyimpan…',1);try{await db.collection(col).doc(id).set(obj);setSync('Tersimpan',1)}catch(e){setSync(e&&e.code==='quota_exceeded'?'Penyimpanan penuh':'Gagal simpan, coba lagi',0)}}else saveLocal()}
-async function del(col,id){delete S[col][id];render();
-  if(mode==='db'){try{await db.collection(col).doc(id).delete();setSync('Tersimpan',1)}catch(e){setSync('Gagal hapus',0)}}else saveLocal()}
+async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{'content-type':'application/json','x-pin':PIN,...(opt.headers||{})}});
+  if(r.status===401){lock('PIN salah atau sudah diganti. Masukkan lagi.');throw{code:'pin'}}
+  if(!r.ok)throw{code:r.status};return r.json()}
+let queue=Promise.resolve();
+function send(ops){queue=queue.then(async()=>{setSync('Menyimpan…',1);try{const d=await api('/api/data',{method:'POST',body:JSON.stringify({ops})});S=d;saveLocal();render();setSync('Tersimpan',1)}
+  catch(e){if(e.code!=='pin')setSync(e.code===413?'Penyimpanan penuh':'Gagal simpan, cek internet',0)}})}
+async function put(col,id,obj){S[col][id]=obj;saveLocal();render();send([{col,id,obj}])}
+async function del(col,id){delete S[col][id];saveLocal();render();send([{col,id,obj:null}])}
+async function pull(){try{setSync('Memuat…',1);S=await api('/api/data');saveLocal();render();setSync('Tersimpan',1)}catch(e){if(e.code!=='pin')setSync('Offline, menampilkan data terakhir',0)}}
 function setSync(t,ok){$('sync').textContent=t;$('dot').classList.toggle('off',!ok)}
 
 /* ---------- maths ---------- */
@@ -407,7 +422,8 @@ let tT;function toast(msg,fn){undo=fn;$('toastT').textContent=msg;$('toastB').st
 $('toastB').addEventListener('click',()=>{if(undo)undo();undo=null;$('toast').classList.remove('show')});
 
 /* ---------- foto struk ---------- */
-let sampler=null,thumb=null;
+let sampler=false,thumb=null;
+function shrink(f){return new Promise((ok,no)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.82))};im.onerror=()=>no({code:"image_rejected"});im.src=URL.createObjectURL(f)})}
 function pickCat(c){if(!CATS[type].includes(c))return;cat=c;for(const x of $('cats').children)x.classList.toggle('on',x.dataset.c===c)}
 const ERR={not_granted:'Izin ke Claude belum diberikan',sampling_disabled:'Fitur ini tidak tersedia di akunmu',rate_limited:'Terlalu sering, coba lagi sebentar lagi',image_rejected:'Foto tidak bisa dibaca, coba foto lain',invalid_json:'Struk kurang jelas, coba foto ulang',refused:'Foto ini tidak bisa diproses',session_expired:'Silakan login ulang ke Claude'};
 $('scanF').addEventListener('change',async e=>{
@@ -428,7 +444,7 @@ Aturan:
 - catatan: maksimal 60 karakter, nama toko/penerima dan ringkasan isi.
 - Kalau foto bukan struk atau total tidak terbaca, balas {"total":0}.`;
   try{
-    const r=await sampler.json(prompt,{images:[f]});
+    const image=await shrink(f);const r=await api('/api/scan',{method:'POST',body:JSON.stringify({image,prompt})}).catch(e=>{throw{code:e.code===422?'invalid_json':e.code===501?'images_unavailable':e.code}});
     const total=Math.round(Number(r&&r.total)||0);
     if(!total){$('scanMsg').textContent='Total tidak terbaca. Coba foto lebih dekat dan terang.';return}
     setType(r.jenis==='in'?'in':'out');setAmt(total);if(typeof r.kategori==='string')pickCat(r.kategori);
@@ -442,21 +458,33 @@ Aturan:
     if(['not_granted','sampling_disabled','images_unavailable','not_declared'].includes(c))$('scanRow').hidden=true}
   finally{L.removeAttribute('aria-busy')}
 });
-(async()=>{let s=null;try{s=window.claude&&await window.claude.use('sample')}catch(e){}
-  if(!s)return;const lim=await s.limits().catch(()=>null);if(!lim||!lim.images)return;
-  sampler=s;if(lim.images.mediaTypes&&lim.images.mediaTypes.length)$('scanF').accept=lim.images.mediaTypes.join(',');$('scanRow').hidden=false})();
+async function scanCheck(){try{const r=await api('/api/scan');sampler=!!r.enabled;$('scanRow').hidden=!sampler}catch(e){}}
 
 /* ---------- start ---------- */
 {const h=new Date().getHours();$('greet').textContent=h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam'}
 setType('out');$('tgl').value=today();
-S=loadLocal();render();setSync('Hanya di perangkat ini',0);
-(async()=>{let d=null;try{d=window.claude&&await window.claude.use('db')}catch(e){}
-  if(!d)return;db=d;mode='db';S={akun:{},tx:{},hutang:{}};render();setSync('Memuat…',0);
-  const seen=new Set();const timer=setTimeout(()=>setSync('Belum tersambung, data mungkin belum terbaru',0),10000);
-  for(const col of['akun','tx','hutang'])db.collection(col).onSnapshot(snap=>{const m={};for(const doc of snap.docs)if(doc.exists)m[doc.id]=doc.data();S[col]=m;
-    if(!snap.metadata.fromCache){seen.add(col);if(seen.size===3){clearTimeout(timer);setSync('Tersimpan',1)}}render()},
-    ()=>{clearTimeout(timer);setSync('Tidak bisa memuat data',0)});
-})();
+S=loadLocal();render();
+function lock(msg){$('lock').hidden=false;$('lockMsg').textContent=msg||'';$('pin').value='';setTimeout(()=>$('pin').focus(),50)}
+let setupMode=false;
+async function boot(){
+  if(PIN){$('lock').hidden=true;await pull();scanCheck();return}
+  try{const r=await (await fetch('/api/auth',{cache:'no-store'})).json();setupMode=!r.setup}catch(e){}
+  $('lockT').textContent=setupMode?'Buat PIN':'Masukkan PIN';
+  $('lockGo').textContent=setupMode?'Simpan PIN':'Buka';
+  lock(setupMode?'Pertama kali: buat PIN minimal 6 karakter. PIN ini dipakai untuk membuka Buku Uang di HP mana pun.':'')}
+$('lockF').addEventListener('submit',async e=>{e.preventDefault();const pin=$('pin').value.trim();
+  if(pin.length<6){$('lockMsg').textContent='PIN minimal 6 karakter';return}
+  $('lockGo').disabled=true;
+  try{const r=await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin,mode:setupMode?'setup':'check'})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){$('lockMsg').textContent=j.error||'Gagal, coba lagi';return}
+    PIN=pin;try{localStorage.setItem('bukuUang.pin',pin)}catch(e){}
+    $('lock').hidden=true;await pull();scanCheck();
+  }catch(e){$('lockMsg').textContent='Tidak bisa tersambung ke server'}
+  finally{$('lockGo').disabled=false}});
+$('logout').addEventListener('click',()=>{PIN='';try{localStorage.removeItem('bukuUang.pin');localStorage.removeItem(LK)}catch(e){}S={akun:{},tx:{},hutang:{}};render();setupMode=false;$('lockT').textContent='Masukkan PIN';$('lockGo').textContent='Buka';lock('')});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&PIN)pull()});
+boot();
 }
 </script>
 </body>

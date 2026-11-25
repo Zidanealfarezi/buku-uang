@@ -1,0 +1,9 @@
+{
+  "name": "buku-uang",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "dependencies": {
+    "@vercel/blob": "latest"
+  }
+}
