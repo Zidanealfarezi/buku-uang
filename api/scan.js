@@ -3,7 +3,7 @@ import { guard } from './_lib.js';
 // GET  /api/scan            -> { enabled }  (needs ANTHROPIC_API_KEY in Vercel env)
 // POST /api/scan {image, prompt} -> parsed JSON from Claude
 export default async function handler(req, res) {
-  if (!(await guard(req, res))) return;
+  if (!guard(req, res)) return;
   const key = process.env.ANTHROPIC_API_KEY;
   if (req.method === 'GET') return res.json({ enabled: !!key });
   if (req.method !== 'POST') return res.status(405).end();

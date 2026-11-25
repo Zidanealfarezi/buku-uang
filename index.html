@@ -97,7 +97,7 @@ header .who{flex:1}header small{display:block;color:var(--mute);font-size:12px}h
 .ak{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 44px;gap:8px;align-items:center;margin-top:10px}
 .ak small{grid-column:1/-1;color:var(--mute);font-size:12px;margin-top:-4px}
 /* form */
-select,input[type=text],input[type=date]{width:100%;min-height:46px;border:0;background:var(--soft);color:var(--ink);border-radius:14px;padding:0 12px;font-size:16px}
+select,input[type=text],input[type=date],input[type=password]{width:100%;min-height:46px;border:0;background:var(--soft);color:var(--ink);border-radius:14px;padding:0 12px;font-size:16px}
 label.f{font-size:12px;color:var(--mute);display:block;margin:0 0 4px 2px;font-weight:600}
 .seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--soft);border-radius:16px;padding:4px;gap:4px}
 .seg button{border:0;background:none;color:var(--mute);font-weight:700;font-size:14px;min-height:42px;border-radius:12px;cursor:pointer}
@@ -137,17 +137,30 @@ nav .add svg{width:26px;height:26px}
 .sheet h2{margin:0 0 10px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:var(--card);border-radius:14px;padding:10px 14px;display:none;gap:14px;align-items:center;font-size:14px;z-index:10;max-width:92vw}
 .toast.show{display:flex}.toast button{background:none;border:0;color:var(--lime);font-weight:700;min-height:36px;cursor:pointer}
-.lock{position:fixed;inset:0;background:var(--bg);z-index:20;display:grid;place-items:center;padding:24px}
-.lockbox{width:min(360px,100%);text-align:center}.lockbox h2{margin:0 0 14px;font-size:22px}
-.lockbox input{width:100%;min-height:56px;border:0;border-radius:18px;background:var(--card);color:var(--ink);font:800 26px "Plus Jakarta Sans",sans-serif;text-align:center;letter-spacing:.3em}
-.lockbox .sub{color:var(--mute);font-size:13px;min-height:1.2em;margin:10px 0 0}
+.lock{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;padding:0 0 32px}
+.lhead{background:var(--lime);color:#17210b;padding:calc(28px + env(safe-area-inset-top)) 24px 72px;border-radius:0 0 32px 32px;position:relative;overflow:hidden}
+.lhead .av{background:#17210b;color:var(--lime)}
+.lhead h1{margin:14px 0 4px;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.lhead p{margin:0;max-width:21ch;opacity:.8;font-size:14px}
+.lcard{position:absolute;right:-44px;top:22px;width:180px;height:112px;border-radius:20px;background:#ffffffb0;padding:14px;transform:rotate(-8deg);box-shadow:0 14px 30px -14px #3b5a0a66}
+.lcard small{font-size:11px;opacity:.7;display:block}.lcard b{font-size:17px;font-weight:800}
+.lcard i{position:absolute;bottom:14px;width:12px;border-radius:4px 4px 2px 2px;background:#a6e04a}
+.lcard i:nth-of-type(1){left:14px;height:14px}.lcard i:nth-of-type(2){left:30px;height:24px}.lcard i:nth-of-type(3){left:46px;height:18px}.lcard i:nth-of-type(4){left:62px;height:30px;background:#2f9e48}.lcard i:nth-of-type(5){left:78px;height:20px}.lcard i:nth-of-type(6){left:94px;height:26px}.lcard i:nth-of-type(7){left:110px;height:12px}
+.lockbox{background:var(--card);border-radius:28px;margin:-44px 16px 0;padding:18px;position:relative;max-width:440px;box-shadow:0 18px 40px -24px #0005;display:grid;gap:12px}
+@media(min-width:480px){.lockbox{margin-inline:auto}}
+.lockbox input{font-size:16px}
+.pw{position:relative}.pw input{padding-right:70px}
+.pw button{position:absolute;right:6px;top:6px;height:34px;padding:0 10px;border:0;border-radius:10px;background:var(--card);color:var(--green);font-weight:700;font-size:13px;cursor:pointer}
+.lmsg{margin:0;color:var(--out);font-size:13px;min-height:1.2em}
+.lockbox .save{margin-top:0}
+.lfoot{margin:0;text-align:center;font-size:14px;color:var(--mute)}.lfoot button{border:0;background:none;color:var(--green);font-weight:700;font-size:14px;cursor:pointer;padding:6px}
 @media(prefers-reduced-motion:no-preference){.sheet{animation:up .25s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="av" aria-hidden="true">Rp</div>
+    <div class="av" id="meAv" aria-hidden="true">Rp</div>
     <div class="who"><small id="greet">Halo</small><b>Buku Uang</b></div>
     <span class="ib" title="Status simpan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z"/></svg><i class="dot off" id="dot"></i></span>
   </header>
@@ -194,7 +207,7 @@ nav .add svg{width:26px;height:26px}
     <div class="card"><b>Akun dan saldo awal</b><p class="sub" style="margin:4px 0 0;font-size:13px">Saldo awal = saldo saat mulai mencatat. Ketuk tombol kanan untuk ubah jenis: akun "titip" tidak dihitung sebagai uang siap pakai.</p>
       <div id="akunList"></div>
       <button type="button" class="pill more" id="addAk">+ Tambah akun</button>
-      <button type="button" class="pill more" id="logout">Kunci / keluar dari HP ini</button>
+      <button type="button" class="pill more" id="logout">Keluar dari akun</button>
     </div>
   </section>
 </div>
@@ -242,10 +255,24 @@ nav .add svg{width:26px;height:26px}
   <button class="save" id="payOk">Tandai lunas</button>
   <button class="pill more" id="payNo" type="button">Batal</button>
 </div></div>
-<div class="lock" id="lock" hidden><form id="lockF" class="lockbox" autocomplete="off">
-  <div class="av" style="margin:0 auto 10px">Rp</div><h2 id="lockT">Masukkan PIN</h2>
-  <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••" aria-label="PIN">
-  <p id="lockMsg" class="sub"></p><button class="save" id="lockGo">Buka</button></form></div>
+<div class="lock" id="lock" hidden>
+  <div class="lhead">
+    <div class="av">Rp</div>
+    <h1>Buku Uang</h1>
+    <p>Catat uang masuk, keluar, dan hutang. Tersimpan aman di akunmu.</p>
+    <div class="lcard" aria-hidden="true"><small>Uang siap pakai</small><b>Rp1.250.000</b><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <form id="lockF" class="lockbox" autocomplete="on" novalidate>
+    <div class="seg" id="lseg"><button type="button" data-m="login" class="on">Masuk</button><button type="button" data-m="signup">Daftar</button></div>
+    <div id="nameBox" hidden><label class="f" for="lName">Nama</label><input type="text" id="lName" autocomplete="name" placeholder="Nama kamu"></div>
+    <div><label class="f" for="lUser">Username</label><input type="text" id="lUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="mis. zidane"></div>
+    <div><label class="f" for="lPass">Password</label><div class="pw"><input type="password" id="lPass" autocomplete="current-password" placeholder="Minimal 8 karakter"><button type="button" id="eye" aria-label="Tampilkan password">Lihat</button></div></div>
+    <div id="pass2Box" hidden><label class="f" for="lPass2">Ulangi password</label><input type="password" id="lPass2" autocomplete="new-password" placeholder="Ketik ulang password"></div>
+    <p id="lockMsg" class="lmsg" role="alert"></p>
+    <button class="save" id="lockGo">Masuk</button>
+    <p class="lfoot" id="lswitch">Belum punya akun? <button type="button" data-m="signup">Daftar</button></p>
+  </form>
+</div>
 <div class="toast" id="toast"><span id="toastT"></span><button id="toastB">Batalkan</button></div>
 
 <script>
@@ -270,11 +297,11 @@ const IC={out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 let S={akun:{},tx:{},hutang:{}},db=null,mode='local',type='out',cat='Makan',view='home',showN=30,payId=null,undo=null,amount=0,sel=today();
 
 /* ---------- storage (Vercel API) ---------- */
-let PIN='';try{PIN=localStorage.getItem('bukuUang.pin')||''}catch(e){}
+let TOKEN='',ME=null;try{TOKEN=localStorage.getItem('bukuUang.token')||'';ME=JSON.parse(localStorage.getItem('bukuUang.me')||'null')}catch(e){}
 function loadLocal(){try{const v=JSON.parse(localStorage.getItem(LK));if(v&&v.akun)return v}catch(e){}return{akun:{},tx:{},hutang:{}}}
 function saveLocal(){try{localStorage.setItem(LK,JSON.stringify(S))}catch(e){}}
-async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{'content-type':'application/json','x-pin':PIN,...(opt.headers||{})}});
-  if(r.status===401){lock('PIN salah atau sudah diganti. Masukkan lagi.');throw{code:'pin'}}
+async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{'content-type':'application/json',authorization:'Bearer '+TOKEN,...(opt.headers||{})}});
+  if(r.status===401){signOut('Sesi berakhir, silakan masuk lagi.');throw{code:'pin'}}
   if(!r.ok)throw{code:r.status};return r.json()}
 let queue=Promise.resolve();
 function send(ops){queue=queue.then(async()=>{setSync('Menyimpan…',1);try{const d=await api('/api/data',{method:'POST',body:JSON.stringify({ops})});S=d;saveLocal();render();setSync('Tersimpan',1)}
@@ -464,26 +491,35 @@ async function scanCheck(){try{const r=await api('/api/scan');sampler=!!r.enable
 {const h=new Date().getHours();$('greet').textContent=h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam'}
 setType('out');$('tgl').value=today();
 S=loadLocal();render();
-function lock(msg){$('lock').hidden=false;$('lockMsg').textContent=msg||'';$('pin').value='';setTimeout(()=>$('pin').focus(),50)}
-let setupMode=false;
-async function boot(){
-  if(PIN){$('lock').hidden=true;await pull();scanCheck();return}
-  try{const r=await (await fetch('/api/auth',{cache:'no-store'})).json();setupMode=!r.setup}catch(e){}
-  $('lockT').textContent=setupMode?'Buat PIN':'Masukkan PIN';
-  $('lockGo').textContent=setupMode?'Simpan PIN':'Buka';
-  lock(setupMode?'Pertama kali: buat PIN minimal 6 karakter. PIN ini dipakai untuk membuka Buku Uang di HP mana pun.':'')}
-$('lockF').addEventListener('submit',async e=>{e.preventDefault();const pin=$('pin').value.trim();
-  if(pin.length<6){$('lockMsg').textContent='PIN minimal 6 karakter';return}
-  $('lockGo').disabled=true;
-  try{const r=await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin,mode:setupMode?'setup':'check'})});
+let lmode='login';
+function setMode(m){lmode=m;for(const b of $('lseg').children)b.classList.toggle('on',b.dataset.m===m);
+  $('nameBox').hidden=$('pass2Box').hidden=m!=='signup';$('lockGo').textContent=m==='signup'?'Buat akun':'Masuk';
+  $('lPass').autocomplete=m==='signup'?'new-password':'current-password';
+  $('lswitch').innerHTML=m==='signup'?'Sudah punya akun? <button type="button" data-m="login">Masuk</button>':'Belum punya akun? <button type="button" data-m="signup">Daftar</button>';
+  $('lockMsg').textContent=''}
+function lock(msg){$('lock').hidden=false;$('lockMsg').textContent=msg||'';$('lPass').value='';$('lPass2').value=''}
+function showMe(){if(!ME)return;$('greet').textContent=$('greet').textContent.split(',')[0]+', '+ME.name.split(' ')[0];$('meAv').textContent=(ME.name||ME.username).trim().charAt(0).toUpperCase()}
+function signOut(msg){TOKEN='';ME=null;try{localStorage.removeItem('bukuUang.token');localStorage.removeItem('bukuUang.me');localStorage.removeItem(LK)}catch(e){}
+  S={akun:{},tx:{},hutang:{}};render();$('meAv').textContent='Rp';setMode('login');lock(msg)}
+async function boot(){if(TOKEN){$('lock').hidden=true;showMe();await pull();scanCheck()}else{setMode('login');lock('')}}
+$('lseg').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b)setMode(b.dataset.m)});
+$('lswitch').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b)setMode(b.dataset.m)});
+$('eye').addEventListener('click',()=>{const t=$('lPass').type==='password';$('lPass').type=$('lPass2').type=t?'text':'password';$('eye').textContent=t?'Tutup':'Lihat'});
+$('lockF').addEventListener('submit',async e=>{e.preventDefault();
+  const username=$('lUser').value.trim().toLowerCase(),password=$('lPass').value,name=$('lName').value.trim();
+  if(!/^[a-z0-9_.]{3,24}$/.test(username))return void($('lockMsg').textContent='Username 3–24 karakter: huruf kecil, angka, titik, atau garis bawah');
+  if(password.length<8)return void($('lockMsg').textContent='Password minimal 8 karakter');
+  if(lmode==='signup'){if(!name)return void($('lockMsg').textContent='Isi nama kamu');if(password!==$('lPass2').value)return void($('lockMsg').textContent='Password tidak sama')}
+  $('lockGo').disabled=true;$('lockMsg').textContent='';
+  try{const r=await fetch('/api/auth',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:lmode,username,password,name})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){$('lockMsg').textContent=j.error||'Gagal, coba lagi';return}
-    PIN=pin;try{localStorage.setItem('bukuUang.pin',pin)}catch(e){}
-    $('lock').hidden=true;await pull();scanCheck();
+    TOKEN=j.token;ME={username:j.username,name:j.name};try{localStorage.setItem('bukuUang.token',TOKEN);localStorage.setItem('bukuUang.me',JSON.stringify(ME))}catch(e){}
+    $('lock').hidden=true;showMe();await pull();scanCheck();if(lmode==='signup')toast('Akun dibuat. Selamat datang, '+j.name.split(' ')[0]+'!',null);
   }catch(e){$('lockMsg').textContent='Tidak bisa tersambung ke server'}
   finally{$('lockGo').disabled=false}});
-$('logout').addEventListener('click',()=>{PIN='';try{localStorage.removeItem('bukuUang.pin');localStorage.removeItem(LK)}catch(e){}S={akun:{},tx:{},hutang:{}};render();setupMode=false;$('lockT').textContent='Masukkan PIN';$('lockGo').textContent='Buka';lock('')});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&PIN)pull()});
+$('logout').addEventListener('click',()=>signOut(''));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&TOKEN)pull()});
 boot();
 }
 </script>
